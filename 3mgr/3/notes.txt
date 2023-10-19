@@ -1,0 +1,39 @@
+also add a preprocessor chain
+	swapping out require for custom one by the user
+	ifdefs etc
+
+the project runs like this:
+
+1
+You will need a main() method somewhere in the project
+
+2
+Three will load all files in the project directory
+	if nothing special is written the following goes
+
+3a
+Three loads all modules as their file path names,
+	which means these are also used as module
+	specifications for module(name) calls.
+
+3b
+Three can also load modules based on a project 
+	specification, which can recurse to more specs.
+	This makes it easy to copy directory contents
+	around without messing with all modules that
+	use them.
+
+4
+Three makes itself available to the main method,
+	and will run until three.exit is called.
+	(if the main method exits then only services will
+	still be alive/available)
+
+5
+Upon three.exit(status) called, Three will stop the
+	main function and call module cleanup.
+
+6
+Last to shut down is the startup code for the
+	project, which can call post-exit code.
+

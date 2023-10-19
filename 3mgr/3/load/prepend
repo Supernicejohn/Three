@@ -1,0 +1,16 @@
+--[[ 
+* Default Three Module Prepend *
+* Version 1 Indev              *
+]]
+
+local args = {...}
+-- Passing our runtime to the module
+local getThree = args[1]
+local getProject = args[2]
+-- These are the guaranteed inputs any module can expext
+local this = {}
+-- The module table, in which to place all module code
+
+--[[
+* End Three Module Prepend     *
+]]
