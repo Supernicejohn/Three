@@ -20,7 +20,7 @@ local this = {}
 --TODO: read three.proj files in each dir, recursing
 
 
-local root_dir = "/CIMCOM/3mgr/_test" -- TODO: update
+local root_dir = "/Three/3mgr/_test" -- TODO: update
 
 three.debug.INFO("Three loading init")
 three.project.setroot(root_dir)
