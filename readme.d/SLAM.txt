@@ -1,0 +1,34 @@
+SLAM Loading
+[Sequencial Loading and Moduling]
+
+SLAM is one technique used by Three in order to
+create projects, mainly those that require modules
+which are made/created at runtime of the program.
+
+Specifying modulepaths as SLAM in project files
+will let Three know that any module trying to
+access anything under that path will not be
+available until the program itself wants to load
+the particular module.
+
+For this, Three includes (in 3, not Three.std)
+a module-loader that programs are free to use
+for loading of generated module code.
+
+This is useful if we for example want to make
+an api call to some software that provides Lua
+code. By default all modules would have to be
+specified at launch, and code not included in 
+the Three project spec. would of course not be
+correctly managed by Three. 
+SLAM Loading is the easiest way to get this code
+to neatly interact with all other project code.
+
+For example; Three provides global service calls
+and these would not accept listening with non-
+Three defined listeners easily.
+To solve this, simply specify module paths that
+will be loaded during runtime, and Three will
+attempt to create dummies for these that get
+replaced with the real version (possibly several
+times) as the program generates a module.

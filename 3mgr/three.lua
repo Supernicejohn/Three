@@ -333,7 +333,7 @@ three.project.walkdirs = function(cDir, mName)
 		local iName = mName.."."..fs.getName(dir)
 		if fs.getName(dir):sub(1,1) ~= "." then
 			if fs.isDir(dir) then
-				this.walkdirs(dir, iName)
+				three.project.walkdirs(dir, iName)
 			elseif fs.exists(dir) then --normal file?
 				three.ld(iName, dir)
 			else
