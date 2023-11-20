@@ -170,10 +170,10 @@ three.inload = function(fileName, rel)
 			"call to loaded module file errored! "
 				..c_err.." skipping!!")
 		return
-	else
-		three._load.addevents(c_ok)
-		return c_ok
 	end
+	three._load.checks(c_ok)
+	three._load.addevents(c_ok)
+	return c_ok
 end
 
 three._load = {}
@@ -215,6 +215,17 @@ three._load.getfile = function(fileName)
 end
 
 three._load.wrap = function(fileName)
+	local prepend = three._load._prepend --fallback
+	local append = three._load._append --fallback
+	--TODO: custom loaders
+	if prepend:find("FALLBACK") then
+		three.debug.INFO("Using fallback prepender in "
+		.."loading! Consider generating a default one")
+	end
+	if append:find("FALLBACK") then
+		three.debug.INFO("Using fallback appender in "
+		.."loading! Consider generating a default one")
+	end
 	local instr = three._load.getfile(fileName)
 	if not instr then
 		return
@@ -223,6 +234,20 @@ three._load.wrap = function(fileName)
 	outstr = three._load._prepend..instr
 		..three._load._append
 	return outstr
+end
+
+--[[ Three will perform some sanity checks for you ]]
+three._load.checks = function(mod)
+	if type(mod) ~= "table" then
+		three.debug.ERROR("Can not check non-module!")
+		return
+	end
+	for k, v in pairs(mod) do
+		if type(v) ~= "function" and type(v) ~= "table" then
+			three.debug.WARN("Found an immediate in mod! '"
+			..k.."', value: '"..tostring(v).."'")
+		end
+	end
 end
 
 three._load.addevents = function(mod)
