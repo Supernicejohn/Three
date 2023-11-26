@@ -408,22 +408,37 @@ three.project.loaddir = function(dir, opts)
 		three.project.walkdirs(dir, "")
 		return
 	end
+	-- we assume we have a valid project file, and
+	-- if not, should fail out with an error message.
 end
 
---[[ Loads a project from a project file. ]]
+--[[ Loads a project from a project file. 
+	requires an absolute path to the project file.]]
 three.project.fromproj = function(projFile)
+	local obj = {}
 	if not projFile or not fs.exists(projFile) then
 		three.debug.FATAL("Project file missing")
 	end
-	
+	local fp = fs.open(projFile, "r")
+	if not fp then
+		three.debug.FATAL("Error readin project file"
+			..tostring(projFile))
+	end
+	local lines = fp.readAll()
+	fp.close()
+	-- Is this the 'root' project file?
+	obj.isRoot = false
+	if lines:find("[Root]") then
+		obj.isRoot = true
+	end
+	obj.root = fs.getDir(projFile)
+
+
+	three.project.loaddir(obj.root, {})
 end
 
---[[ Internal function that can also be called from
-	a simpler startup file. Starts the Three env. ]]
-three.project.init = function()
-	
-end
-
+--[[ Three warnings/nags about project or module
+	structure on load ]]
 three.project.nags = {}
 
 --[[ Three Project Defines -
