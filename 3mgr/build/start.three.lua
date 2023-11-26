@@ -30,11 +30,7 @@ three.project.setroot(root_dir)
 three.debug.INFO("Running on project root '"..root_dir.."'")
 three.project.loaddir(root_dir)
 three.debug.INFO("All modules loaded!")
-if three.project.main then
-	three.project.main()
-else
-	three.debug.WARN("No main to call, exiting Three runtime")
-end
+three.project.init()
 three.debug.INFO("End of execution")
 --TODO: use three file system 
 

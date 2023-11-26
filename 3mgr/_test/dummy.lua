@@ -15,8 +15,15 @@ this.on_done = function()
 	-- this runs when all modules are loaded,
 	-- meaning that all packages will be
 	-- available and callable (if conforming)
+	print("done")
+end
+this.on_load = function()
+	-- this runs when this module is loaded,
+	-- allowing some post-setup to occur before
+	-- the main program is started up.
 	print("loaded")
 end
 this.main = function()
 	print("main!")
+	print(this.hi())
 end

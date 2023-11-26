@@ -4,7 +4,8 @@
 
 
 local three = {
-	com = {} -- The com table
+	com = {}, -- The com table
+	coro = {}, -- The coroutines managed by Three
 }
 
 --[==[ DEBUGGING THREE ]==]
@@ -129,7 +130,7 @@ end
 three.ld = function(tpath, fpath)
 	local mod = three.inload(fpath)
 	if mod then
-		three.set(tpath, mod)
+		three.set(tpath, three.std.getrotable(mod))
 	end
 end
 
@@ -150,7 +151,7 @@ three.inload = function(fileName, rel)
 	end
 	local f = fileName 
 	if rel then
-		f = shell.dir().."/"..f
+		f = fs.combine(shell.dir(), f)
 	end
 	if fs.exists(f..".lua") then
 		f = f..".lua"
@@ -218,11 +219,15 @@ three._load.wrap = function(fileName)
 	local prepend = three._load._prepend --fallback
 	local append = three._load._append --fallback
 	--TODO: custom loaders
-	if prepend:find("FALLBACK") then
+	if prepend:find("FALLBACK") and 
+		not three.project.nags.default_prepend then
+		three.project.nags.default_prepend = true
 		three.debug.INFO("Using fallback prepender in "
 		.."loading! Consider generating a default one")
 	end
-	if append:find("FALLBACK") then
+	if append:find("FALLBACK") and
+		not three.project.nags.default_append then
+		three.project.nags.default_append = true
 		three.debug.INFO("Using fallback appender in "
 		.."loading! Consider generating a default one")
 	end
@@ -257,10 +262,16 @@ three._load.addevents = function(mod)
 		return
 	end
 	if mod.on_done then
+		three.debug.INFO("Added an on_done callback")
+		three.event.on_done_callbacks[
+			#three.event.on_done_callbacks + 1]
+			= mod.on_done
+	end
+	if mod.on_load then
 		three.debug.INFO("Added an on_load callback")
 		three.event.on_load_callbacks[
 			#three.event.on_load_callbacks + 1]
-			= mod.on_done
+			= mod.on_load
 	end
 	if mod.main and type(mod.main) == "function" then
 		if three.project.main then
@@ -296,7 +307,6 @@ three.event.modulesloaded = function()
 			"Error during module loaded call: "..err)
 		end
 	end
-	three.project.main()
 end
 
 --[[ This function registers a callback for a module that
@@ -329,6 +339,22 @@ end
 three.event.onmodulesdone = function(callback)
 	on_done_callbacks[#on_done_callbacks + 1]
 		= callback
+end
+
+--[[ The Three standard library, for interfacing with
+	events, I/O, buffers, synchronization et.c.
+	]]
+three.std = {}
+three.std.getrotable = function(handle)
+	local rot = {} -- perfect name
+	for k, v in pairs(handle) do
+		rot[k] = v
+	end
+	local meta = {}
+	meta.__index = function()
+		three.debug.ERROR("Readonly module")
+	end
+	return setmetatable(rot, meta)
 end
 
 
@@ -367,6 +393,9 @@ three.project.walkdirs = function(cDir, mName)
 			end
 		end
 	end
+	three.event.modulesloaded()
+	three.event.modulesdone()
+	three.project.main()
 end
 
 --[[ Loads a project from a directory, with the
@@ -388,6 +417,14 @@ three.project.fromproj = function(projFile)
 	end
 	
 end
+
+--[[ Internal function that can also be called from
+	a simpler startup file. Starts the Three env. ]]
+three.project.init = function()
+	
+end
+
+three.project.nags = {}
 
 --[[ Three Project Defines -
 	Describes options used for specifying loading
