@@ -131,6 +131,7 @@ three.ld = function(tpath, fpath)
 	local mod = three.inload(fpath)
 	if mod then
 		three.set(tpath, three.std.getrotable(mod))
+		table.insert(three.project.modulenames, tpath)
 	end
 end
 
@@ -370,10 +371,25 @@ three.project = {}
 		project in Three.]]
 three.project.com = {}
 three.project.main = false -- is there a main() ?
+three.project.modulenames = {}
 
 --[[ Sets the root directory for the project ]]
 three.project.setroot = function(path)
 	three.project.root = path
+end
+
+three.project.printmods = function()
+	local function printmod(table, path)
+		for k,v in pairs(table) do
+			if type(v) == "table" then
+				three.debug.INFO(path.."-> ")
+				printmod(v, path.."."..k)
+			else
+				three.debug.INFO(path.."->"..k)
+			end
+		end
+	end
+	printmod(three.com, "")
 end
 
 three.project.walkdirs = function(cDir, mName)
@@ -387,6 +403,10 @@ three.project.walkdirs = function(cDir, mName)
 				three.project.walkdirs(dir, iName)
 			elseif fs.exists(dir) then --normal file?
 				three.ld(iName, dir)
+				three.project.modulecount = 
+					three.project.modulecount and
+					three.project.modulecount + 1 or
+					1
 			else
 				three.debug.ERR("Could not walk to"
 					.." file/dir: "..dir)
@@ -398,6 +418,41 @@ three.project.walkdirs = function(cDir, mName)
 	three.project.main()
 end
 
+three.project.walkproj = function(cDir, mName, opts)
+	local entries = fs.list(cDir)
+	local modules = {}
+	for i=1, #entries do
+		local dir = fs.combine(cDir, entries[i])
+		local iName = mName.."."..fs.getName(dir)
+		if three.project.getchecker(dir, opts) then
+			if fs.isDir(dir) then
+				three.project.walkproj(dir, iName, opts)
+			elseif fs.exists(dir) then
+				three.ld(iName, dir)
+				three.project.modulecount = 
+					three.project.modulecount and
+					three.project.modulecount + 1 or
+					1
+			else
+				three.debug.ERR("Could not walk to"
+				.." file/dir: "..dir)
+			end
+		end
+	end
+	three.debug.INFO("Modules loaded: ")
+	for i=1, #three.project.modulenames do
+		three.debug.INFO(three.project.modulenames[i])
+	end
+	three.project.printmods()
+	three.event.modulesloaded()
+	three.event.modulesdone()
+	if three.project.main then
+		three.project.main()
+	else
+		three.debug.INFO("No main() method..")
+	end
+end
+
 --[[ Loads a project from a directory, with the
 	specified options. ]]
 three.project.loaddir = function(dir, opts)
@@ -405,11 +460,21 @@ three.project.loaddir = function(dir, opts)
 	if not opts[three.project.defs.NORMAL] then
 		-- this indicates simplest possible execution,
 		-- without proj files or excludes.
+		three.debug.DEBUG("No project file")
 		three.project.walkdirs(dir, "")
 		return
 	end
 	-- we assume we have a valid project file, and
 	-- if not, should fail out with an error message.
+	three.project.walkproj(dir, "", opts)
+end
+
+local function splitstr(str, denom)
+	local lines = {}
+	for s in str:gmatch("[^"..denom.."]+") do
+		table.insert(lines, s)
+	end
+	return lines
 end
 
 --[[ Loads a project from a project file. 
@@ -421,7 +486,7 @@ three.project.fromproj = function(projFile)
 	end
 	local fp = fs.open(projFile, "r")
 	if not fp then
-		three.debug.FATAL("Error readin project file"
+		three.debug.FATAL("Error reading project file: "
 			..tostring(projFile))
 	end
 	local lines = fp.readAll()
@@ -432,9 +497,82 @@ three.project.fromproj = function(projFile)
 		obj.isRoot = true
 	end
 	obj.root = fs.getDir(projFile)
+	lines = splitstr(lines, "\n")
+	
+	obj[three.project.defs.NORMAL] = true 
+	obj.whitelist = three.project.getwhite(lines)
+	obj.blacklist = three.project.getblack(lines)
 
+	three.project.loaddir(obj.root, obj)
+end
 
-	three.project.loaddir(obj.root, {})
+--TODO fix location
+local function lazymatch(match, str)
+	local str = fs.getName(str)
+	if match:sub(1,1) == "*" then
+		if str:find(match:sub(2, #match)) then
+			return true
+		end
+	elseif match:sub(#match, #match) == "*" then
+		if str:sub(1, #match - 1) == match:sub(1, #match - 1) then
+			return true
+		end
+	elseif str == match then
+		return true
+	end
+	return false
+end
+
+three.project.getchecker = function(name, opts)
+	local isWhitelisted = false
+	local isBlacklisted = false
+	for i=1, #opts.whitelist do
+		if lazymatch(opts.whitelist[i], name) then
+			isWhitelisted = true
+			break;
+		end
+	end
+	for i=1, #opts.blacklist do
+		if lazymatch(opts.blacklist[i], name) then
+			isBlacklisted = true
+			break;
+		end
+	end
+	return isWhitelisted and not isBlacklisted
+end
+
+three.project.getwhite = function(lines)
+	local whitelist = {}
+	local isIn = false
+	for i=1, #lines do
+		local l = lines[i]
+		if l:find("%[Loading Whitelist%]") then
+			isIn = true
+		elseif isIn and l:sub(1,1) == "["
+			and l:sub(#l, #l) == "]" then
+			break
+		elseif isIn and l:sub(1,1) ~= "#" then
+			whitelist[#whitelist + 1] = l
+		end
+	end
+	return whitelist
+end
+
+three.project.getblack = function(lines)
+	local blacklist = {}
+	local isIn = false
+	for i=1, #lines do
+		local l = lines[i]
+		if l:find("%[Loading Blacklist%]") then
+			isIn = true
+		elseif isIn and l:sub(1,1) == "["
+			and l:sub(#l, #l) == "]" then
+			break
+		elseif isIn and l:sub(1,1) ~= "#" then
+			blacklist[#blacklist + 1] = l
+		end
+	end
+	return blacklist
 end
 
 --[[ Three warnings/nags about project or module
@@ -446,7 +584,7 @@ three.project.nags = {}
 	the files in the project, and how they are run.
 ]]
 three.project.defs = {
-	NORMAL, -- if absent, Three does not take
+	NORMAL = 0x1, -- if absent, Three does not take
 	-- any care to load project files and similar.
 	SAFE, -- if used, prompts Three to wrap
 	-- more loading and execution in pcall's.

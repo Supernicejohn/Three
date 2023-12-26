@@ -18,6 +18,7 @@ end
 
 local fileStr = [[
 [Three Project File]
+[Root]
 [Epoch stamp=]]..os.epoch("utc")..[[]
 [Project Name=]]..project_name..[[]
 [Project Author=TODO]
@@ -36,7 +37,7 @@ NORMAL
 #Note: only runnable Lua code should be included here.
 [Loading Blacklist]
 start.lua
-.*.lua
+.*
 #Exclude code that should not be ran, like temporary tests.
 [Loader]
 #Specify a custom module loader, that is, function that loads the
