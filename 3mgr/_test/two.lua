@@ -24,6 +24,9 @@ this.on_done = function()
 	print("done")
 	a.debug.WARN("MOD: "..tostring(a.com.two.hello))
 	a.debug.DEBUG("ABC in this mod: "..a.com.two.abc())
+	a.debug.DEBUG("Hello from dummy, in two!")
+	a.com.dummy.hello()
+	a.debug.DEBUG("My file name is: "..this.__NAME)
 end
 this.on_load = function()
 	-- this runs when this module is loaded,

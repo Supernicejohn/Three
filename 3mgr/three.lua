@@ -130,7 +130,6 @@ end
 three.ld = function(tpath, fpath)
 	local mod = three.inload(fpath)
 	if mod then
-		three.debug.INFO("Name: "..tpath)
 		three.set(tpath, three.std.getrotable(mod))
 		table.insert(three.project.modulenames, tpath)
 	end
@@ -224,22 +223,23 @@ three._load.wrap = function(fileName)
 	if prepend:find("FALLBACK") and 
 		not three.project.nags.default_prepend then
 		three.project.nags.default_prepend = true
-		three.debug.INFO("Using fallback prepender in "
+		three.debug.DEBUG("Using fallback prepender in "
 		.."loading! Consider generating a default one")
 	end
 	if append:find("FALLBACK") and
 		not three.project.nags.default_append then
 		three.project.nags.default_append = true
-		three.debug.INFO("Using fallback appender in "
+		three.debug.DEBUG("Using fallback appender in "
 		.."loading! Consider generating a default one")
 	end
+	prepend = prepend.."\nthis.__NAME = \""..fileName.."\""
 	local instr = three._load.getfile(fileName)
 	if not instr then
 		return
 	end
 	local outstr = ""
-	outstr = three._load._prepend..instr
-		..three._load._append
+	outstr = prepend..instr..append
+	print()
 	return outstr
 end
 
@@ -248,12 +248,6 @@ three._load.checks = function(mod)
 	if type(mod) ~= "table" then
 		three.debug.ERROR("Can not check non-module!")
 		return
-	end
-	for k, v in pairs(mod) do
-		if type(v) ~= "function" and type(v) ~= "table" then
-			three.debug.WARN("Found an immediate in mod! '"
-			..k.."', value: '"..tostring(v).."'")
-		end
 	end
 end
 
@@ -264,13 +258,11 @@ three._load.addevents = function(mod)
 		return
 	end
 	if mod.on_done then
-		three.debug.INFO("Added an on_done callback")
 		three.event.on_done_callbacks[
 			#three.event.on_done_callbacks + 1]
 			= mod.on_done
 	end
 	if mod.on_load then
-		three.debug.INFO("Added an on_load callback")
 		three.event.on_load_callbacks[
 			#three.event.on_load_callbacks + 1]
 			= mod.on_load
@@ -281,7 +273,6 @@ three._load.addevents = function(mod)
 				.." multiple modules with main methods!")
 		end
 		three.project.main = mod.main
-		three.debug.INFO("Set main function")
 	end
 end
 
@@ -462,11 +453,7 @@ three.project.walkproj = function(cDir, mName, opts)
 			end
 		end
 	end
-	three.debug.INFO("Modules loaded: ")
-	for i=1, #three.project.modulenames do
-		three.debug.INFO(three.project.modulenames[i])
-	end
-	three.project.printmods()
+	--three.project.printmods()
 	three.event.modulesloaded()
 	three.event.modulesdone()
 	if three.project.main then
