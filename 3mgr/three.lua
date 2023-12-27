@@ -130,6 +130,7 @@ end
 three.ld = function(tpath, fpath)
 	local mod = three.inload(fpath)
 	if mod then
+		three.debug.INFO("Name: "..tpath)
 		three.set(tpath, three.std.getrotable(mod))
 		table.insert(three.project.modulenames, tpath)
 	end
@@ -391,13 +392,24 @@ three.project.printmods = function()
 	end
 	printmod(three.com, "")
 end
-
+--[[
 three.project.walkdirs = function(cDir, mName)
 	local entries = fs.list(cDir)
 	local modules = {}
 	for i=1, #entries do
 		local dir = fs.combine(cDir, entries[i])
-		local iName = mName.."."..fs.getName(dir)
+		local iName = ""
+		if #mName > 0 then
+			iName = mName.."."..fs.getName(dir)
+		else
+			iName = fs.getName(dir)
+		end
+		-- HACK!
+		if iName:sub(#iName - 3, #iName) == ".lua" then
+			iName = iName:sub(#iName - 3, #iName)
+		end
+
+		-- won't be needed with next gen prepender
 		if fs.getName(dir):sub(1,1) ~= "." then
 			if fs.isDir(dir) then
 				three.project.walkdirs(dir, iName)
@@ -417,13 +429,24 @@ three.project.walkdirs = function(cDir, mName)
 	three.event.modulesdone()
 	three.project.main()
 end
+]]
 
 three.project.walkproj = function(cDir, mName, opts)
 	local entries = fs.list(cDir)
 	local modules = {}
 	for i=1, #entries do
 		local dir = fs.combine(cDir, entries[i])
-		local iName = mName.."."..fs.getName(dir)
+		local iName = ""
+		if #mName > 0 then
+			iName = mName.."."..fs.getName(dir)
+		else
+			iName = fs.getName(dir)
+		end
+		-- HACK!
+		if iName:sub(#iName - 3, #iName) == ".lua" then
+			iName = iName:sub(1, #iName - 4)
+		end
+		-- won't be needed with next gen prepender
 		if three.project.getchecker(dir, opts) then
 			if fs.isDir(dir) then
 				three.project.walkproj(dir, iName, opts)

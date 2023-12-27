@@ -3,10 +3,16 @@
 	modules are available for the default
 	configuration in Three ]]
 
+local a = getThree()
+
 this.hello = function()
 	print("Hello World!")
 end
-local a = getThree()
+
+this.abc = function()
+	return "some string c: "
+end
+
 this.hi = function()
 	print("three should be: ")
 	print(getThree())
@@ -16,14 +22,8 @@ this.on_done = function()
 	-- meaning that all packages will be
 	-- available and callable (if conforming)
 	print("done")
-	a.debug.FINE("not printed")
-	a.debug.INFO("printed")
-	for k,v in pairs(a.com) do
-		print("key: "..k..", val: "..tostring(v))
-		for i,j in pairs(v) do
-			print("key: "..i..", val: "..tostring(j))
-		end
-	end
+	a.debug.WARN("MOD: "..tostring(a.com.two.hello))
+	a.debug.DEBUG("ABC in this mod: "..a.com.two.abc())
 end
 this.on_load = function()
 	-- this runs when this module is loaded,
