@@ -16,7 +16,7 @@ local three = {
 		severity is one of three.debug.levelnames.]]
 three.debug = {
 	write = function(level, msg)
-		if three.debug.level < level-1 then
+		if three.debug.level < level then
 			return
 		end
 		local col = term.getTextColor()
@@ -35,12 +35,12 @@ three.debug = {
 	end
 }
 three.debug.levels = {
-	fatal = 0,
-	err 	= 1,
-	warn 	= 2,
-	debug	= 3,
-	info	= 4,
-	fine	= 5
+	fatal = 1,
+	err 	= 2,
+	warn 	= 3,
+	debug	= 4,
+	info	= 5,
+	fine	= 6
 }
 three.debug.levelnames = {
 	"FATAL",
