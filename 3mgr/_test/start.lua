@@ -5,9 +5,9 @@ which starts three loading and running.
 ]]
 
 -- Edit these to fit your project
-local threeName = "THREE"
-local threeLocation = "3mgr/three"
-local startLocation = "3mgr/build/start.three.lua"
+local threeName = "3mgr"
+local threeLocation = "three"
+local startLocation = "build/start.three.lua"
 -- Get the current working directory
 -- Modify if this breaks due to shell
 local path = fs.getDir(shell.getRunningProgram())
