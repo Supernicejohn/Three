@@ -1,11 +1,13 @@
 --[[
-	Three module loader
+	Three
 ]]--
 
 
 local three = {
 	com = {}, -- The com table
 	coro = {}, -- The coroutines managed by Three
+	project = {}, -- The project table
+	reader = {}, -- The three file reader
 }
 
 --[==[ DEBUGGING THREE ]==]
@@ -357,7 +359,6 @@ end
 		Three load all files and perform initialization.
 		See the README and utils directory in 3mgr for
 		documentation and tools for setting up a project.]]
-three.project = {}
 
 --[[ The table that holds all information about the loaded
 		project in Three.]]
@@ -584,6 +585,35 @@ three.project.getblack = function(lines)
 	end
 	return blacklist
 end
+
+--[[ Three reader, reads the lua files and 
+	generates the necessary lua for the three
+	instructions. ]]
+--[[ Example:
+#version 2.0
+^ Specifies a minimum Three version to build.
+
+#level WARN
+^ Specifies a minimum log level.
+
+#using three.std.stream.out as stdout
+^ Generates:
+	local stdout = getThree()._load().get(\
+	"three.std.stream.out");
+
+#using com.mymod.helper.tostring as tostring
+^ Generates:
+	local tostring = getThree()._load().get(\
+	"com.mymod.helper.tostring");
+
+#inline com.mymod.helper.tostring as tostring
+^ Generates the function call stated above, 
+	at all locations of "tostring" in the code.
+	Useful where the module loaded is only
+	available at runtime (which is dangerous).
+]]
+
+
 
 --[[ Three warnings/nags about project or module
 	structure on load ]]
