@@ -299,7 +299,7 @@ three.event.modulesloaded = function()
 		local ok, err = pcall(v)
 		if not ok then
 			three.debug.ERR(
-			"Error during module loaded call: "..err)
+				"Error during module loaded call: "..err)
 		end
 	end
 end
@@ -332,14 +332,18 @@ end
 		all modules are done and cleaned up,
 		use sparingly.]]
 three.event.onmodulesdone = function(callback)
-	on_done_callbacks[#on_done_callbacks + 1]
-		= callback
+	three.event.on_done_callbacks[
+		#three.event.on_done_callbacks + 1]
+			= callback
 end
 
 --[[ The Three standard library, for interfacing with
 	events, I/O, buffers, synchronization et.c.
 	]]
 three.std = {}
+three.std.getruntime = function()
+	return shell
+end
 three.std.getrotable = function(handle)
 	local rot = {} -- perfect name
 	for k, v in pairs(handle) do
@@ -384,44 +388,6 @@ three.project.printmods = function()
 	end
 	printmod(three.com, "")
 end
---[[
-three.project.walkdirs = function(cDir, mName)
-	local entries = fs.list(cDir)
-	local modules = {}
-	for i=1, #entries do
-		local dir = fs.combine(cDir, entries[i])
-		local iName = ""
-		if #mName > 0 then
-			iName = mName.."."..fs.getName(dir)
-		else
-			iName = fs.getName(dir)
-		end
-		-- HACK!
-		if iName:sub(#iName - 3, #iName) == ".lua" then
-			iName = iName:sub(#iName - 3, #iName)
-		end
-
-		-- won't be needed with next gen prepender
-		if fs.getName(dir):sub(1,1) ~= "." then
-			if fs.isDir(dir) then
-				three.project.walkdirs(dir, iName)
-			elseif fs.exists(dir) then --normal file?
-				three.ld(iName, dir)
-				three.project.modulecount = 
-					three.project.modulecount and
-					three.project.modulecount + 1 or
-					1
-			else
-				three.debug.ERR("Could not walk to"
-					.." file/dir: "..dir)
-			end
-		end
-	end
-	three.event.modulesloaded()
-	three.event.modulesdone()
-	three.project.main()
-end
-]]
 
 three.project.walkproj = function(cDir, mName, opts)
 	local entries = fs.list(cDir)
@@ -455,12 +421,19 @@ three.project.walkproj = function(cDir, mName, opts)
 		end
 	end
 	--three.project.printmods()
+	three.project.populatecom()
 	three.event.modulesloaded()
 	three.event.modulesdone()
 	if three.project.main then
 		three.project.main()
 	else
 		three.debug.INFO("No main() method..")
+	end
+end
+
+three.project.populatecom = function()
+	for k,v in pairs(three.com) do
+		three.project.com[k] = three.std.getrotable(v)
 	end
 end
 
