@@ -1,12 +1,3 @@
-Preface: This file will be ignored by the default
-	Three project specification. If you remove the
-	config/project file then you will need to remove
-	all non-runnable code on the module path.
-	(This will be the root of your project without a
-	project spec.)
-	For most projects, you can safely leave this file
-	as it will not get included in the build output.
-
 #Three
 Welcome to Three
 A Lua framework for writing applications, mainly
@@ -67,3 +58,14 @@ The main reason Three exists is because I found
 	project look something like the following:
 	"com.mygroup.mynestedgroup.mymodule.*"
 	with "*" being functions and values.
+
+#Example
+In this repo, a /_test/ directory exists.
+	this can be ran with the included start script.
+	to do so, call start.three.lua, with args
+	1: absolute path to three
+	2: absolute path to /_test/ directory
+	This will run the built-in simple test.
+	Note: three should be without .lua at the end,
+	and the /_test/ should be the last part of
+	the test directory path.
