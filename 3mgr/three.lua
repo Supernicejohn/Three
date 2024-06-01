@@ -251,6 +251,7 @@ three._load.checks = function(mod)
 		three.debug.ERROR("Can not check non-module!")
 		return
 	end
+	-- finalized what to check TBD
 end
 
 three._load.addevents = function(mod)
@@ -286,12 +287,6 @@ three.event = {
 	on_load_callbacks = {}
 }
 
---[[ Modules should call this function once they are
-		loaded, typically just before they return.]]
-three.event.moduleloaded = function(path)
-	-- ? congrats?
-end
-
 --[[ This function is called once all modules registered
 		have been loaded, and will call the callbacks.]]
 three.event.modulesloaded = function()
@@ -304,17 +299,6 @@ three.event.modulesloaded = function()
 	end
 end
 
---[[ This function registers a callback for a module that
-		will run when all modules are loaded.]]
-three.event.onmodulesloaded = function(callback)
-
-end
-
---[[ This function is called when a specific module has
-		finished its 'module loaded' section.]]
-three.event.moduledone = function(path)
-	
-end
 
 --[[ This function is called when all modules have
 		finished their moduledone cleanup.]]
@@ -375,6 +359,11 @@ three.project.setroot = function(path)
 	three.project.root = path
 end
 
+--[[ Sets the directory for the three files ]]
+three.project.setthreedir = function(path)
+	three.project.threedir = path
+end
+
 three.project.printmods = function()
 	local function printmod(table, path)
 		for k,v in pairs(table) do
@@ -420,15 +409,6 @@ three.project.walkproj = function(cDir, mName, opts)
 			end
 		end
 	end
-	--three.project.printmods()
-	three.project.populatecom()
-	three.event.modulesloaded()
-	three.event.modulesdone()
-	if three.project.main then
-		three.project.main()
-	else
-		three.debug.INFO("No main() method..")
-	end
 end
 
 three.project.populatecom = function()
@@ -436,6 +416,15 @@ three.project.populatecom = function()
 		three.project.com[k] = three.std.getrotable(v)
 	end
 end
+
+three.project._three_whitelist = {
+	"*.ext",
+	"*/"
+}
+three.project._three_blacklist = {
+	"three.lua",
+	"*.swp"
+}
 
 --[[ Loads a project from a directory, with the
 	specified options. ]]
@@ -448,9 +437,28 @@ three.project.loaddir = function(dir, opts)
 		three.project.walkdirs(dir, "")
 		return
 	end
+	-- attempt to load extra three files
+	if three.project.threedir then
+		local d = fs.getDir(three.project.threedir)
+		three.debug.WARN(d)
+		three.project.walkproj(d, "", {
+			whitelist = three.project._three_whitelist,
+			blacklist = three.project._three_blacklist
+		})
+	end
+
 	-- we assume we have a valid project file, and
 	-- if not, should fail out with an error message.
 	three.project.walkproj(dir, "", opts)
+	--three.project.printmods()
+	three.project.populatecom()
+	three.event.modulesloaded()
+	three.event.modulesdone()
+	if three.project.main then
+		three.project.main()
+	else
+		three.debug.INFO("No main() method..")
+	end
 end
 
 local function splitstr(str, denom)
@@ -492,6 +500,11 @@ end
 
 --TODO fix location
 local function lazymatch(match, str)
+	if match:sub(#match, #match) == "/" then
+		if fs.isDir(str) then
+			return true
+		end
+	end
 	local str = fs.getName(str)
 	if match:sub(1,1) == "*" then
 		if str:find(match:sub(2, #match)) then
