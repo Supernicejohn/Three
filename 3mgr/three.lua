@@ -8,6 +8,7 @@ local three = {
 	coro = {}, -- The coroutines managed by Three
 	project = {}, -- The project table
 	reader = {}, -- The three file reader
+	preprocessor = {}, -- The pre processor
 }
 
 --[==[ DEBUGGING THREE ]==]
@@ -113,8 +114,16 @@ end
 		setting the path for a loaded module.]]
 three.set = function(path, mod)
 	local qualifiers = three._qualifiers(path)
+	local walk = three.com
+	if qualifiers[1] == "com" then
+		walk = three --ULTRAHACK
+		-- This puts the specific 'com.my.path'
+		-- path correctly, AND the unspecified
+		-- paths... but inserting directly into
+		-- the 'three' table is a no-no...
+		-- ... too bad!
+	end
 	if #qualifiers > 0 then
-		local walk = three.com
 		for i=1, #qualifiers - 1 do
 			if not walk[qualifiers[i]] then
 				walk[qualifiers[i]] = {}
@@ -131,9 +140,10 @@ end
 		com table than the specified file path.]]
 three.ld = function(tpath, fpath)
 	local mod = three.inload(fpath)
+	local mPath = mod.mod_path or tpath
 	if mod then
-		three.set(tpath, three.std.getrotable(mod))
-		table.insert(three.project.modulenames, tpath)
+		three.set(mPath, three.std.getrotable(mod))
+		table.insert(three.project.modulenames, mPath)
 	end
 end
 
@@ -159,8 +169,11 @@ three.inload = function(fileName, rel)
 	if fs.exists(f..".lua") then
 		f = f..".lua"
 	end
-	local l_ok, l_err = loadstring(
-		three._load.wrap(f))
+	local wrapped = three._load.wrap(f)
+	local mPath = three.preprocessor.getModulePath(wrapped)
+	print("mod path for "..fileName..":"
+		..tostring(mPath))
+	local l_ok, l_err = loadstring(wrapped)
 	if not l_ok then
 		three.debug.ERR("loadstring errored: "..l_err
 				.." skipping!!")
@@ -177,7 +190,7 @@ three.inload = function(fileName, rel)
 	end
 	three._load.checks(c_ok)
 	three._load.addevents(c_ok)
-	return c_ok
+	return {mod = c_ok, mod_path = mPath}
 end
 
 three._load = {}
@@ -186,7 +199,6 @@ three._load._prepend = [[
 local args = {...}
 local getThree = args[1]
 local getProject = args[2]
-
 local this = {}
 ]]
 three._load._append = [[
@@ -219,7 +231,10 @@ three._load.getfile = function(fileName)
 end
 
 three._load.wrap = function(fileName)
-	local prepend = three._load._prepend --fallback
+	local shortened = fileName:sub(#fileName - 12,
+		#fileName)
+	local prepend = "--"..shortened
+		..three._load._prepend --fallback
 	local append = three._load._append --fallback
 	--TODO: custom loaders
 	if prepend:find("FALLBACK") and 
@@ -391,6 +406,8 @@ three.project.walkproj = function(cDir, mName, opts)
 		end
 		-- HACK!
 		if iName:sub(#iName - 3, #iName) == ".lua" then
+			iName = iName:sub(1, #iName - 4)
+		elseif iName:sub(#iName - 3, #iName) == ".ext" then
 			iName = iName:sub(1, #iName - 4)
 		end
 		-- won't be needed with next gen prepender
@@ -570,6 +587,25 @@ three.project.getblack = function(lines)
 		end
 	end
 	return blacklist
+end
+
+--[[ Gets the module path from the string
+	representing a complete module file.
+	Looks for --MOD: <str> 
+	If not found returns nil]]
+three.preprocessor.getModulePath = function(str)
+	local mStr = "--MOD:"
+	local mLen = #mStr
+	local off = str:find(mStr)
+	if not off then
+		return
+	end
+	str = str:sub(off, #str)
+	local line = str:sub(
+		str:find(mStr.."%s*%S+"))
+	local s, e = line:sub(mLen + 1, #line):find("%S+")
+	local path = line:sub(mLen + s, mLen + e)
+	return path
 end
 
 --[[ Three reader, reads the lua files and 

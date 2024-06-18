@@ -1,0 +1,13 @@
+--[[ Three standard I/O ops 
+	to be made accessible to internal three operations
+	as well as modules loaded after three's internal
+	modules are all loaded]]
+
+--[[ TODO is to place these at com.std, alt.
+	com.three, com.[modname]
+	Instead of "com.three_modules.io .
+	ALSO Strip the .ext extension from everywhere
+	when it is loaded
+
+]]
+
