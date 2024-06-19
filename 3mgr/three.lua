@@ -116,7 +116,7 @@ three.set = function(path, mod)
 	local qualifiers = three._qualifiers(path)
 	local walk = three.com
 	if qualifiers[1] == "com" then
-		walk = three --ULTRAHACK
+		walk = three --ULTRAHACK - use table.remove first instead...
 		-- This puts the specific 'com.my.path'
 		-- path correctly, AND the unspecified
 		-- paths... but inserting directly into
