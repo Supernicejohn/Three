@@ -341,12 +341,13 @@ end
 three.std.getrotable = function(handle)
 	local rot = {} -- perfect name
 	for k, v in pairs(handle) do
-		rot[k] = v
+		rot[k] = handle[k]
 	end
 	local meta = {}
 	meta.__index = function()
-		three.debug.ERROR("Readonly module")
+		three.debug.ERR("Readonly module")
 	end
+	
 	return setmetatable(rot, meta)
 end
 
@@ -486,7 +487,8 @@ end
 three.project.fromproj = function(projFile)
 	local obj = {}
 	if not projFile or not fs.exists(projFile) then
-		three.debug.FATAL("Project file missing")
+		three.debug.FATAL("Project file missing: "..
+		projFile)
 	end
 	local fp = fs.open(projFile, "r")
 	if not fp then
@@ -589,8 +591,8 @@ end
 	Looks for --MOD: <str> 
 	If not found returns nil]]
 three.preprocessor.getModulePath = function(str)
-	local mStr = "--MOD:"
-	local mLen = #mStr
+	local mStr = "%-%-MOD:"
+	local mLen = #mStr-2
 	local off = str:find(mStr)
 	if not off then
 		return

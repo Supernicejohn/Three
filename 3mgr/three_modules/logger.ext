@@ -1,0 +1,9 @@
+--MOD: std.log
+
+--[[ extends three.debug with additional
+--   debugging functionality ]]
+
+local three = getThree()
+
+-- if this module is loaded, the logger
+-- will be replaced by these functions

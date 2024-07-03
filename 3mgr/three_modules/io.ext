@@ -3,11 +3,16 @@
 	as well as modules loaded after three's internal
 	modules are all loaded]]
 
---[[ TODO is to place these at com.std, alt.
-	com.three, com.[modname]
-	Instead of "com.three_modules.io .
-	ALSO Strip the .ext extension from everywhere
-	when it is loaded
+--MOD: std.io
 
-]]
+local three = getThree()
 
+this.fetchfile = function(abspath)
+	
+end
+
+this.on_load = function()
+	print(this.val)
+end
+
+this.val = "hi"
