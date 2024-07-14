@@ -6,13 +6,23 @@
 --MOD: std.io
 
 local three = getThree()
+local log
 
+this.on_load = function()
+	log = three.debug
+	-- if the log ext module is available, use it
+	local opt_ext_log = three.std.log
+	if opt_ext_log then
+		log = opt_ext_log.mod
+	end
+end
+
+--[[ fetches a file and returns a table with rows
+-- as indices for each line, with the line as the
+-- value.
+-- If file did not exist, logs a file not found
+-- error and returns nil.]]
 this.fetchfile = function(abspath)
 	
 end
 
-this.on_load = function()
-	print(this.val)
-end
-
-this.val = "hi"

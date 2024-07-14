@@ -5,6 +5,7 @@
 
 local three = {
 	com = {}, -- The com table
+	std = {}, -- The std lib 
 	coro = {}, -- The coroutines managed by Three
 	project = {}, -- The project table
 	reader = {}, -- The three file reader
@@ -18,7 +19,15 @@ local three = {
 		'three.debug.<severity>(<message>)' where
 		severity is one of three.debug.levelnames.]]
 three.debug = {
-	write = function(level, msg)
+	write = function(level, ...)
+		local strs = {...}
+		local msg = ""
+		for i = 1, #strs do
+			msg = msg..tostring(strs[i])
+			if (i < #strs) then
+				msg = msg..", "
+			end
+		end
 		if three.debug.level < level then
 			return
 		end
@@ -55,8 +64,8 @@ three.debug.levelnames = {
 }
 --[[ create convenience log functions.]]
 for k,v in pairs(three.debug.levelnames) do
-	three.debug[v] = function(msg)
-		three.debug.write(k, msg)
+	three.debug[v] = function(...)
+		three.debug.write(k, ...)
 	end
 end
 three.debug.level = three.debug.levels.info
@@ -114,10 +123,10 @@ end
 		setting the path for a loaded module.]]
 three.set = function(path, mod)
 	local qualifiers = three._qualifiers(path)
-	local walk = three.com
-	if qualifiers[1] == "com" then
-		table.remove(qualifiers, 1)
-	end
+	local walk = three
+--	if qualifiers[1] == "com" then
+--		table.remove(qualifiers, 1)
+--	end
 	if #qualifiers > 0 then
 		for i=1, #qualifiers - 1 do
 			if not walk[qualifiers[i]] then
@@ -362,6 +371,7 @@ end
 --[[ The table that holds all information about the loaded
 		project in Three.]]
 three.project.com = {}
+three.project.std = three.std
 three.project.main = false -- is there a main() ?
 three.project.modulenames = {}
 
