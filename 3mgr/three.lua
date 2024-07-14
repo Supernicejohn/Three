@@ -20,6 +20,9 @@ local three = {
 		severity is one of three.debug.levelnames.]]
 three.debug = {
 	write = function(level, ...)
+		if three.debug.level < level then
+			return
+		end
 		local strs = {...}
 		local msg = ""
 		for i = 1, #strs do
@@ -27,9 +30,6 @@ three.debug = {
 			if (i < #strs) then
 				msg = msg..", "
 			end
-		end
-		if three.debug.level < level then
-			return
 		end
 		local col = term.getTextColor()
 		term.setTextColor(colors.purple)
@@ -175,7 +175,7 @@ three.inload = function(fileName, rel)
 	end
 	local wrapped = three._load.wrap(f)
 	local mPath = three.preprocessor.getModulePath(wrapped)
-	print("mod path for "..fileName..":"
+	three.debug.FINE("mod path for "..fileName..":"
 		..tostring(mPath))
 	local l_ok, l_err = loadstring(wrapped)
 	if not l_ok then
@@ -260,7 +260,6 @@ three._load.wrap = function(fileName)
 	end
 	local outstr = ""
 	outstr = prepend..instr..append
-	print()
 	return outstr
 end
 
