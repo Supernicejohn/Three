@@ -32,7 +32,6 @@ three.project.setroot(root_dir)
 three.debug.INFO("Running on project root '"..root_dir.."'")
 --three.project.loaddir(root_dir)
 three.project.fromproj(fs.combine(root_dir,"three.proj"))
-three.debug.INFO("All modules loaded!")
 three.debug.INFO("End of execution")
 --TODO: use three file system 
 

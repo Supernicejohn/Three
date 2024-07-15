@@ -1,0 +1,46 @@
+--[[
+-- Extends the project functionality
+-- when this is loaded, modules can be
+-- retrieved with much more grace.
+-- ]]
+
+
+--MOD: std.project
+-- Note: injects directly into the three table
+
+local function split(str)
+	local tbl = {}
+	while true do
+		local nextDot = str:find("%.")
+		if not nextDot then
+			if #str > 0 then
+				tbl[#tbl + 1] = str
+			end
+			return tbl
+		end
+		tbl[#tbl + 1] = str:sub(1, nextDot - 1)
+		str = str:sub(nextDot + 1, #str)
+	end
+end
+getProject().getMod = function(...)
+	local args = {...}
+	local modPath = args[1]
+	while #args > 1 do
+		table.remove(args, 1)
+		modPath = modPath.."."..args[1]
+	end
+	local ok, val = pcall(function()
+		local w = getProject()
+		local path = split(modPath)
+		while #path > 0 do
+			w = w[path[1]]
+			table.remove(path, 1)
+		end
+		return w
+	end)
+	if ok and val then
+		return val.mod
+	end
+	getThree().debug.ERR("Failed getting module "..modPath..
+		"\n "..tostring(val))
+end

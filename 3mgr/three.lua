@@ -39,7 +39,7 @@ three.debug = {
 		print(msg)
 		term.setTextColor(col)
 		if level == three.debug.levels.fatal then
-			error("Three exited")
+			error("Three exited", 4)
 		end
 	end,
 	setlevel = function(level)
@@ -297,6 +297,11 @@ three._load.addevents = function(mod)
 	end
 end
 
+three.exit = function()
+	three.exiting = true
+	three.debug.FATAL("Exiting Three")
+end
+
 --[[ Three does basic event management, these are
 		events that can be hooked on to for performing
 		on module load an on module done initialization.]]
@@ -462,7 +467,7 @@ three.project.loaddir = function(dir, opts)
 	-- attempt to load extra three files
 	if three.project.threedir then
 		local d = fs.getDir(three.project.threedir)
-		three.debug.WARN(d)
+		three.debug.FINE("Project directory: "..tostring(d))
 		three.project.walkproj(d, "", {
 			whitelist = three.project._three_whitelist,
 			blacklist = three.project._three_blacklist
@@ -477,7 +482,19 @@ three.project.loaddir = function(dir, opts)
 	three.event.modulesloaded()
 	three.event.modulesdone()
 	if three.project.main then
-		three.project.main()
+		while not three.exiting do
+			local ok, err = pcall(three.project.main)
+			if ok then
+				return --ends execution
+			end
+			if not ok and not three.exiting then
+				three.debug.INFO("The execution reached the"
+				.." end of the error handling chain into three."
+				.." This usually means the project did not "
+				.."handle an error raised in the main() function",
+				err)
+			end
+		end
 	else
 		three.debug.INFO("No main() method..")
 	end
