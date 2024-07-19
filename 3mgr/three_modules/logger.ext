@@ -1,0 +1,11 @@
+--MOD: std.log
+
+--[[ extends the logging functionality of three,
+-- from the three.debug to three.std.log lib declared
+-- here. ]]
+local three = getThree()
+
+
+this.write = function(level, ...)
+	
+end

@@ -1,0 +1,28 @@
+--[[ Three standard I/O ops 
+	to be made accessible to internal three operations
+	as well as modules loaded after three's internal
+	modules are all loaded]]
+
+--MOD: std.io
+
+local three = getThree()
+local log
+
+this.on_load = function()
+	log = three.debug
+	-- if the log ext module is available, use it
+	local opt_ext_log = three.std.log
+	if opt_ext_log then
+		log = opt_ext_log.mod
+	end
+end
+
+--[[ fetches a file and returns a table with rows
+-- as indices for each line, with the line as the
+-- value.
+-- If file did not exist, logs a file not found
+-- error and returns nil.]]
+this.fetchfile = function(abspath)
+	
+end
+

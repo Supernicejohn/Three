@@ -1,0 +1,38 @@
+--MOD: std.stream
+
+--[[ Three standard stream utilities and
+-- storage ]]
+
+--[[ In Three, streams are queues of I/O.
+-- this may be lines or characters depending
+-- on the settings specified ]]
+this.STDOUT = {}
+this.STDIN = {}
+this.STDERR = {}
+this.attr = {}
+this.flags = {}
+
+--[[ exposed function to append to the selected
+-- stream ]]
+this.write = function(istream, str)
+
+end
+
+--[[ exposed function to read from the selected
+-- stream, note that this blocks until the 
+-- coroutine yields with data. ]]
+this.poll = function(istream, str)
+
+end
+
+--[[ exposed function to set the attributes of
+-- the stream lib. Changes affect how I/O ops 
+-- are carried out and how the piping behavior
+-- is performed. ]]
+this.setattr = function(flags)
+
+end
+
+this.flags.IECHO = "iecho" -- echoes stdin to stdout
+this.flags.ICWR = "icwr" -- always flushes I/O ops
+this.flags.UMEM = "umem" -- use memory "files" first

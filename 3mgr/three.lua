@@ -5,9 +5,11 @@
 
 local three = {
 	com = {}, -- The com table
+	std = {}, -- The std lib 
 	coro = {}, -- The coroutines managed by Three
 	project = {}, -- The project table
 	reader = {}, -- The three file reader
+	preprocessor = {}, -- The pre processor
 }
 
 --[==[ DEBUGGING THREE ]==]
@@ -17,9 +19,17 @@ local three = {
 		'three.debug.<severity>(<message>)' where
 		severity is one of three.debug.levelnames.]]
 three.debug = {
-	write = function(level, msg)
+	write = function(level, ...)
 		if three.debug.level < level then
 			return
+		end
+		local strs = {...}
+		local msg = ""
+		for i = 1, #strs do
+			msg = msg..tostring(strs[i])
+			if (i < #strs) then
+				msg = msg..", "
+			end
 		end
 		local col = term.getTextColor()
 		term.setTextColor(colors.purple)
@@ -29,7 +39,7 @@ three.debug = {
 		print(msg)
 		term.setTextColor(col)
 		if level == three.debug.levels.fatal then
-			error("Three exited")
+			error("Three exited", 4)
 		end
 	end,
 	setlevel = function(level)
@@ -54,8 +64,8 @@ three.debug.levelnames = {
 }
 --[[ create convenience log functions.]]
 for k,v in pairs(three.debug.levelnames) do
-	three.debug[v] = function(msg)
-		three.debug.write(k, msg)
+	three.debug[v] = function(...)
+		three.debug.write(k, ...)
 	end
 end
 three.debug.level = three.debug.levels.info
@@ -113,8 +123,11 @@ end
 		setting the path for a loaded module.]]
 three.set = function(path, mod)
 	local qualifiers = three._qualifiers(path)
+	local walk = three
+--	if qualifiers[1] == "com" then
+--		table.remove(qualifiers, 1)
+--	end
 	if #qualifiers > 0 then
-		local walk = three.com
 		for i=1, #qualifiers - 1 do
 			if not walk[qualifiers[i]] then
 				walk[qualifiers[i]] = {}
@@ -131,9 +144,10 @@ end
 		com table than the specified file path.]]
 three.ld = function(tpath, fpath)
 	local mod = three.inload(fpath)
+	local mPath = mod and mod.mod_path or tpath
 	if mod then
-		three.set(tpath, three.std.getrotable(mod))
-		table.insert(three.project.modulenames, tpath)
+		three.set(mPath, three.std.getrotable(mod))
+		table.insert(three.project.modulenames, mPath)
 	end
 end
 
@@ -159,8 +173,11 @@ three.inload = function(fileName, rel)
 	if fs.exists(f..".lua") then
 		f = f..".lua"
 	end
-	local l_ok, l_err = loadstring(
-		three._load.wrap(f))
+	local wrapped = three._load.wrap(f)
+	local mPath = three.preprocessor.getModulePath(wrapped)
+	three.debug.FINE("mod path for "..fileName..":"
+		..tostring(mPath))
+	local l_ok, l_err = loadstring(wrapped)
 	if not l_ok then
 		three.debug.ERR("loadstring errored: "..l_err
 				.." skipping!!")
@@ -177,7 +194,7 @@ three.inload = function(fileName, rel)
 	end
 	three._load.checks(c_ok)
 	three._load.addevents(c_ok)
-	return c_ok
+	return {mod = c_ok, mod_path = mPath}
 end
 
 three._load = {}
@@ -186,7 +203,6 @@ three._load._prepend = [[
 local args = {...}
 local getThree = args[1]
 local getProject = args[2]
-
 local this = {}
 ]]
 three._load._append = [[
@@ -219,7 +235,10 @@ three._load.getfile = function(fileName)
 end
 
 three._load.wrap = function(fileName)
-	local prepend = three._load._prepend --fallback
+	local shortened = fileName:sub(#fileName - 12,
+		#fileName)
+	local prepend = "--"..shortened
+		..three._load._prepend --fallback
 	local append = three._load._append --fallback
 	--TODO: custom loaders
 	if prepend:find("FALLBACK") and 
@@ -241,7 +260,6 @@ three._load.wrap = function(fileName)
 	end
 	local outstr = ""
 	outstr = prepend..instr..append
-	print()
 	return outstr
 end
 
@@ -251,6 +269,7 @@ three._load.checks = function(mod)
 		three.debug.ERROR("Can not check non-module!")
 		return
 	end
+	-- finalized what to check TBD
 end
 
 three._load.addevents = function(mod)
@@ -278,6 +297,11 @@ three._load.addevents = function(mod)
 	end
 end
 
+three.exit = function()
+	three.exiting = true
+	three.debug.FATAL("Exiting Three")
+end
+
 --[[ Three does basic event management, these are
 		events that can be hooked on to for performing
 		on module load an on module done initialization.]]
@@ -285,12 +309,6 @@ three.event = {
 	on_done_callbacks = {},
 	on_load_callbacks = {}
 }
-
---[[ Modules should call this function once they are
-		loaded, typically just before they return.]]
-three.event.moduleloaded = function(path)
-	-- ? congrats?
-end
 
 --[[ This function is called once all modules registered
 		have been loaded, and will call the callbacks.]]
@@ -304,17 +322,6 @@ three.event.modulesloaded = function()
 	end
 end
 
---[[ This function registers a callback for a module that
-		will run when all modules are loaded.]]
-three.event.onmodulesloaded = function(callback)
-
-end
-
---[[ This function is called when a specific module has
-		finished its 'module loaded' section.]]
-three.event.moduledone = function(path)
-	
-end
 
 --[[ This function is called when all modules have
 		finished their moduledone cleanup.]]
@@ -347,12 +354,13 @@ end
 three.std.getrotable = function(handle)
 	local rot = {} -- perfect name
 	for k, v in pairs(handle) do
-		rot[k] = v
+		rot[k] = handle[k]
 	end
 	local meta = {}
 	meta.__index = function()
-		three.debug.ERROR("Readonly module")
+		three.debug.ERR("Readonly module")
 	end
+	
 	return setmetatable(rot, meta)
 end
 
@@ -367,12 +375,18 @@ end
 --[[ The table that holds all information about the loaded
 		project in Three.]]
 three.project.com = {}
+three.project.std = three.std
 three.project.main = false -- is there a main() ?
 three.project.modulenames = {}
 
 --[[ Sets the root directory for the project ]]
 three.project.setroot = function(path)
 	three.project.root = path
+end
+
+--[[ Sets the directory for the three files ]]
+three.project.setthreedir = function(path)
+	three.project.threedir = path
 end
 
 three.project.printmods = function()
@@ -403,6 +417,8 @@ three.project.walkproj = function(cDir, mName, opts)
 		-- HACK!
 		if iName:sub(#iName - 3, #iName) == ".lua" then
 			iName = iName:sub(1, #iName - 4)
+		elseif iName:sub(#iName - 3, #iName) == ".ext" then
+			iName = iName:sub(1, #iName - 4)
 		end
 		-- won't be needed with next gen prepender
 		if three.project.getchecker(dir, opts) then
@@ -420,15 +436,6 @@ three.project.walkproj = function(cDir, mName, opts)
 			end
 		end
 	end
-	--three.project.printmods()
-	three.project.populatecom()
-	three.event.modulesloaded()
-	three.event.modulesdone()
-	if three.project.main then
-		three.project.main()
-	else
-		three.debug.INFO("No main() method..")
-	end
 end
 
 three.project.populatecom = function()
@@ -436,6 +443,15 @@ three.project.populatecom = function()
 		three.project.com[k] = three.std.getrotable(v)
 	end
 end
+
+three.project._three_whitelist = {
+	"*.ext",
+	"*/"
+}
+three.project._three_blacklist = {
+	"three.lua",
+	"*.swp"
+}
 
 --[[ Loads a project from a directory, with the
 	specified options. ]]
@@ -448,9 +464,40 @@ three.project.loaddir = function(dir, opts)
 		three.project.walkdirs(dir, "")
 		return
 	end
+	-- attempt to load extra three files
+	if three.project.threedir then
+		local d = fs.getDir(three.project.threedir)
+		three.debug.FINE("Project directory: "..tostring(d))
+		three.project.walkproj(d, "", {
+			whitelist = three.project._three_whitelist,
+			blacklist = three.project._three_blacklist
+		})
+	end
+
 	-- we assume we have a valid project file, and
 	-- if not, should fail out with an error message.
 	three.project.walkproj(dir, "", opts)
+	--three.project.printmods()
+	three.project.populatecom()
+	three.event.modulesloaded()
+	three.event.modulesdone()
+	if three.project.main then
+		while not three.exiting do
+			local ok, err = pcall(three.project.main)
+			if ok then
+				return --ends execution
+			end
+			if not ok and not three.exiting then
+				three.debug.INFO("The execution reached the"
+				.." end of the error handling chain into three."
+				.." This usually means the project did not "
+				.."handle an error raised in the main() function",
+				err)
+			end
+		end
+	else
+		three.debug.INFO("No main() method..")
+	end
 end
 
 local function splitstr(str, denom)
@@ -466,7 +513,8 @@ end
 three.project.fromproj = function(projFile)
 	local obj = {}
 	if not projFile or not fs.exists(projFile) then
-		three.debug.FATAL("Project file missing")
+		three.debug.FATAL("Project file missing: "..
+		projFile)
 	end
 	local fp = fs.open(projFile, "r")
 	if not fp then
@@ -492,6 +540,11 @@ end
 
 --TODO fix location
 local function lazymatch(match, str)
+	if match:sub(#match, #match) == "/" then
+		if fs.isDir(str) then
+			return true
+		end
+	end
 	local str = fs.getName(str)
 	if match:sub(1,1) == "*" then
 		if str:find(match:sub(2, #match)) then
@@ -557,6 +610,25 @@ three.project.getblack = function(lines)
 		end
 	end
 	return blacklist
+end
+
+--[[ Gets the module path from the string
+	representing a complete module file.
+	Looks for --MOD: <str> 
+	If not found returns nil]]
+three.preprocessor.getModulePath = function(str)
+	local mStr = "%-%-MOD:"
+	local mLen = #mStr-2
+	local off = str:find(mStr)
+	if not off then
+		return
+	end
+	str = str:sub(off, #str)
+	local line = str:sub(
+		str:find(mStr.."%s*%S+"))
+	local s, e = line:sub(mLen + 1, #line):find("%S+")
+	local path = line:sub(mLen + s, mLen + e)
+	return path
 end
 
 --[[ Three reader, reads the lua files and 
