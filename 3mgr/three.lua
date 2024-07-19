@@ -144,7 +144,7 @@ end
 		com table than the specified file path.]]
 three.ld = function(tpath, fpath)
 	local mod = three.inload(fpath)
-	local mPath = mod.mod_path or tpath
+	local mPath = mod and mod.mod_path or tpath
 	if mod then
 		three.set(mPath, three.std.getrotable(mod))
 		table.insert(three.project.modulenames, mPath)
