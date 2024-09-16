@@ -255,6 +255,7 @@ three._load.wrap = function(fileName)
 	end
 	prepend = prepend.."\nthis.__NAME = \""..fileName.."\""
 	local instr = three._load.getfile(fileName)
+	instr = three._load.runhooks(instr)
 	if not instr then
 		return
 	end
@@ -277,6 +278,11 @@ three._load.addevents = function(mod)
 		three.debug.WARN("Attempted to add event management\
 			to a nil module")
 		return
+	end
+	if mod.using_hooks then
+		three.event.ok_hook_callbacks[
+			#three.event.on_hook_callbacks + 1]
+			= mod.using_hook
 	end
 	if mod.on_done then
 		three.event.on_done_callbacks[
@@ -302,13 +308,50 @@ three.exit = function()
 	three.debug.FATAL("Exiting Three")
 end
 
+--[[ The three hooks to run [new system]
+		this will largely replace the preprocessor stuff
+		as it does the same thing but extendable]]
+three._load.hooks = {
+	--[[ the template that has to be adhered to, does
+			not need to be ran last, does nothing.
+			Note that the ext_modules may further
+			populate this table with hooks to run on
+			new user program files]]
+	function(str)
+		return str
+	end
+}
+
+--[[ For running all the hooks [new system] on a read
+		file to be loaded by three, hooks are stored in
+		three._load.hooks.]]
+three._load.runhooks = function(str)
+	for k, hook in pairs(three._load.hooks) do
+		str = hook(str) -- quite volatile
+	end
+end
+
 --[[ Three does basic event management, these are
 		events that can be hooked on to for performing
-		on module load an on module done initialization.]]
+		on module load and on module done initialization.
+		Also triggers the #using hook]]
 three.event = {
 	on_done_callbacks = {},
-	on_load_callbacks = {}
+	on_load_callbacks = {},
+	on_hook_callbacks = {}
 }
+
+--[[ actual entry point for the #using hooks for loading
+		other modules ]]
+three.event.usinghooks = function()
+	for k, v in pairs(three.event.on_hook_callbacks) do
+		local ok, err = pcall(v)
+		if not ok then
+			three.debug.ERR(
+				"Error during module using hook: "..err)
+		end
+	end
+end
 
 --[[ This function is called once all modules registered
 		have been loaded, and will call the callbacks.]]
@@ -479,6 +522,7 @@ three.project.loaddir = function(dir, opts)
 	three.project.walkproj(dir, "", opts)
 	--three.project.printmods()
 	three.project.populatecom()
+	three.event.usinghook()
 	three.event.modulesloaded()
 	three.event.modulesdone()
 	if three.project.main then
@@ -619,6 +663,12 @@ end
 three.preprocessor.getModulePath = function(str)
 	local mStr = "%-%-MOD:"
 	local mLen = #mStr-2
+
+
+
+	if not str or type(str) ~= "string" then
+		return
+	end
 	local off = str:find(mStr)
 	if not off then
 		return
