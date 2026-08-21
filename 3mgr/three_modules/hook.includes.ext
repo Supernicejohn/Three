@@ -6,6 +6,8 @@
 -- something like #using y.z.abc, (as abc implied)
 -- and #using y.z.abc as x
 
+local three = getThree()
+
 local modWithAlias =
 	"[%s]*([%a%.]+)[%s]+([%a]+)[%s]+([%a%.]+)"
 local modOnly = "[%s]*([%a%.]+)"
@@ -67,17 +69,18 @@ end
 --[[ creates the function to be inserted into the
 	 input module file, which when ran will include
 	 all the modules specified in the '#use' calls. ]]
-local function makeUsingHook(str, usings)
+local function makeUsingHook(usings)
 	local prepend = "this.using_hook = function()"
 	local append = "end"
 	local out = prepend
 	for k, v in pairs(usings) do
 		out = out.."\n"
-		..usings.mod
-		.." = three.project.getMod("
-		..usings.modPath..")\n"
+		..v.used
+		.." = three.project.getMod(\""
+		..v.modPath.."\")\n"
 	end
 	out = out.."\n"..append
+	three.debug.DEBUG(out)
 	return out
 end
 
@@ -104,7 +107,8 @@ this.on_load = function()
 			-- places the function call to this before
 			-- the loadstring
 			
-			local usings = {}
+			local usings = getUsing(str)
+			str = str.."\n"..makeUsingHook(usings)
 			str = removeUsings(str)
 			return str
 		end

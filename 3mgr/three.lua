@@ -39,7 +39,7 @@ three.debug = {
 		print(msg)
 		term.setTextColor(col)
 		if level == three.debug.levels.fatal then
-			error("Three exited", 4)
+			error("Three exited", 3)
 		end
 	end,
 	setlevel = function(level)
@@ -279,7 +279,10 @@ three._load.addevents = function(mod)
 			to a nil module")
 		return
 	end
-	if mod.using_hooks then
+	if mod.using_hook then
+      if not three.event.ok_hook_callbacks then
+         three.event.ok_hook_callbacks = {}
+      end
 		three.event.ok_hook_callbacks[
 			#three.event.on_hook_callbacks + 1]
 			= mod.using_hook
@@ -329,6 +332,7 @@ three._load.runhooks = function(str)
 	for k, hook in pairs(three._load.hooks) do
 		str = hook(str) -- quite volatile
 	end
+	return str
 end
 
 --[[ Three does basic event management, these are
@@ -343,7 +347,7 @@ three.event = {
 
 --[[ actual entry point for the #using hooks for loading
 		other modules ]]
-three.event.usinghooks = function()
+three.event.usinghook = function()
 	for k, v in pairs(three.event.on_hook_callbacks) do
 		local ok, err = pcall(v)
 		if not ok then
@@ -468,6 +472,7 @@ three.project.walkproj = function(cDir, mName, opts)
 			if fs.isDir(dir) then
 				three.project.walkproj(dir, iName, opts)
 			elseif fs.exists(dir) then
+				three.debug.WARN("using: "..dir)
 				three.ld(iName, dir)
 				three.project.modulecount = 
 					three.project.modulecount and
@@ -510,11 +515,13 @@ three.project.loaddir = function(dir, opts)
 	-- attempt to load extra three files
 	if three.project.threedir then
 		local d = fs.getDir(three.project.threedir)
+		d = fs.combine(d, "three_modules")
 		three.debug.FINE("Project directory: "..tostring(d))
 		three.project.walkproj(d, "", {
 			whitelist = three.project._three_whitelist,
 			blacklist = three.project._three_blacklist
 		})
+		three.event.modulesloaded()
 	end
 
 	-- we assume we have a valid project file, and
