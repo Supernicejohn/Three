@@ -177,6 +177,10 @@ three.inload = function(fileName, rel)
 	local mPath = three.preprocessor.getModulePath(wrapped)
 	three.debug.FINE("mod path for "..fileName..":"
 		..tostring(mPath))
+   if mPath == "com.jws" then
+      --local save = fs.open("tmp")
+      print(wrapped)
+   end
 	local l_ok, l_err = loadstring(wrapped)
 	if not l_ok then
 		three.debug.ERR("loadstring errored: "..l_err
@@ -204,6 +208,7 @@ local args = {...}
 local getThree = args[1]
 local getProject = args[2]
 local this = {}
+local com = {}
 ]]
 three._load._append = [[
 -- FALLBACK APPENDER --
@@ -539,11 +544,13 @@ three.project.loaddir = function(dir, opts)
 				return --ends execution
 			end
 			if not ok and not three.exiting then
+            print("Three table in three: "..tostring(three))
 				three.debug.INFO("The execution reached the"
 				.." end of the error handling chain into three."
 				.." This usually means the project did not "
 				.."handle an error raised in the main() function",
 				err)
+            return
 			end
 		end
 	else

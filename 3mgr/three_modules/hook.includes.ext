@@ -45,16 +45,23 @@ local function getUsingTable(singleUseStr)
 			..singleUseStr)
 		return false
 	end
-	used = str:gsub("[%a]+%.", ""):match("([%a]+)")
+   --XXX: I dont think this is what we want...
+   -- this probably parses out only the last part
+   -- of the module path, which will be nonsense.
+   -- everything has to reside in "com." OR be a
+   -- valid local variable outside of com which
+   -- is NOT YET SUPPORTED...
+	--used = singleUseStr:gsub("[%a]+%.", ""):match("([%a]+)")
 	return {
 		modPath = mod,
-		used = used
+		used = mod
 	}
 end
 
 --[[ gets all the matching '#use x as y' calls and
 	 returns a table with all of them using the
-	 #getUsingTable function. ]]
+	 #getUsingTable function.
+    XXX: expensive ]]
 local function getUsing(str)
 	local matches = {}
 	for use in str:gmatch("[^\r\n]+") do
@@ -75,7 +82,7 @@ local function makeUsingHook(usings)
 	local out = prepend
 	for k, v in pairs(usings) do
 		out = out.."\n"
-		..v.used
+		..v.modPath
 		.." = three.project.getMod(\""
 		..v.modPath.."\")\n"
 	end
