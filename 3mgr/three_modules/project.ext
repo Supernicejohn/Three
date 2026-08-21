@@ -7,6 +7,27 @@
 
 --MOD: std.project
 -- Note: injects directly into the three table
+local function printProj(proj, cDepth)
+   for k,v in pairs(proj) do
+      if type(v) == "table" then
+         print()
+         for i = 1, cDepth do
+            write("   ")
+         end
+         write("table: "..k)
+         printProj(v, cDepth + 1)
+      else
+         print()
+         for i = 1, cDepth do
+            write("   ")
+         end
+         write(tostring(k).." : "..tostring(v))
+      end
+   end
+   if cDepth == 0 then
+      print()
+   end
+end
 
 local function split(str)
 	local tbl = {}
@@ -31,6 +52,7 @@ getProject().getMod = function(...)
 	end
 	local ok, val = pcall(function()
 		local w = getProject()
+      printProj(w.com, 0)
 		local path = split(modPath)
 		while #path > 0 do
 			w = w[path[1]]
@@ -43,4 +65,6 @@ getProject().getMod = function(...)
 	end
 	getThree().debug.ERR("Failed getting module "..modPath..
 		"\n "..tostring(val))
+   return {}
 end
+

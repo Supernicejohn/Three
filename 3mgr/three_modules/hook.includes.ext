@@ -1,0 +1,122 @@
+--MOD: three.ext.hook.include
+
+
+-- Shall, in user code, provide the functionality
+-- to skip using local x getMod(y.z.abc), in favor of
+-- something like #using y.z.abc, (as abc implied)
+-- and #using y.z.abc as x
+
+local three = getThree()
+
+local modWithAlias =
+	"[%s]*([%a%.]+)[%s]+([%a]+)[%s]+([%a%.]+)"
+local modOnly = "[%s]*([%a%.]+)"
+
+--[[ finds all instances of where the start of a line
+	 is exactly '#use' and continues parsing the line
+	 for the 1st mandatory module path parameter, 'x'
+	 and the two optional (only together) parameters,
+	 'as y'. ]]
+local function getUsingTable(singleUseStr)
+	singleUseStr = singleUseStr:gsub("^%s+", "")
+	if singleUseStr:sub(1,4) ~= "#use" then
+		return false
+	end
+	singleUseStr = singleUseStr:sub(5, #singleUseStr)
+	local intermediate = singleUseStr:gmatch("[^%s]+")
+	if not intermediate then
+		return false
+	end
+	local mod, as, used = singleUseStr:match(modWithAlias)
+	if mod then
+		if as ~= "as" then
+			three.debug.WARN("incorrect use statement: "
+				..singleUseStr)
+			return false
+		end
+		return {
+			modPath=mod,
+			used=used
+		}
+	end
+	mod = singleUseStr:match(modOnly)
+	if not mod then
+		three.debug.WARN("incorrect use statement: "
+			..singleUseStr)
+		return false
+	end
+   --XXX: I dont think this is what we want...
+   -- this probably parses out only the last part
+   -- of the module path, which will be nonsense.
+   -- everything has to reside in "com." OR be a
+   -- valid local variable outside of com which
+   -- is NOT YET SUPPORTED...
+	--used = singleUseStr:gsub("[%a]+%.", ""):match("([%a]+)")
+	return {
+		modPath = mod,
+		used = mod
+	}
+end
+
+--[[ gets all the matching '#use x as y' calls and
+	 returns a table with all of them using the
+	 #getUsingTable function.
+    XXX: expensive ]]
+local function getUsing(str)
+	local matches = {}
+	for use in str:gmatch("[^\r\n]+") do
+		local match = getUsingTable(use)
+		if match then
+			matches[#matches + 1] = match
+		end
+	end
+	return matches
+end
+
+--[[ creates the function to be inserted into the
+	 input module file, which when ran will include
+	 all the modules specified in the '#use' calls. ]]
+local function makeUsingHook(usings)
+	local prepend = "this.using_hook = function()"
+	local append = "end"
+	local out = prepend
+	for k, v in pairs(usings) do
+		out = out.."\n"
+		..v.modPath
+		.." = three.project.getMod(\""
+		..v.modPath.."\")\n"
+	end
+	out = out.."\n"..append
+	three.debug.DEBUG(out)
+	return out
+end
+
+--[[ converts all #use at the start of lines into
+    being --use instead, ignored by Lua. ]]
+local function removeUsings(str)
+	local out = ""
+	local lines = {}
+	for line in str:gmatch("[^\r\n]+") do
+		if line:sub(1,4) == "#use" then
+			line = line:gsub("#use", "--use")
+		end
+		out = out..line.."\n"
+	end
+	return out
+end
+
+--[[ No external dependencies, just loads the 
+		three._load.hooks table with an extra hook.]]
+this.on_load = function()
+	three._load.hooks[#three._load.hooks + 1] =
+		function(str)
+			-- need a part of the load cycle that also
+			-- places the function call to this before
+			-- the loadstring
+			
+			local usings = getUsing(str)
+			str = str.."\n"..makeUsingHook(usings)
+			str = removeUsings(str)
+			return str
+		end
+end

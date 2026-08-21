@@ -39,7 +39,7 @@ three.debug = {
 		print(msg)
 		term.setTextColor(col)
 		if level == three.debug.levels.fatal then
-			error("Three exited", 4)
+			error("Three exited", 3)
 		end
 	end,
 	setlevel = function(level)
@@ -177,6 +177,10 @@ three.inload = function(fileName, rel)
 	local mPath = three.preprocessor.getModulePath(wrapped)
 	three.debug.FINE("mod path for "..fileName..":"
 		..tostring(mPath))
+   if mPath == "com.jws" then
+      --local save = fs.open("tmp")
+      print(wrapped)
+   end
 	local l_ok, l_err = loadstring(wrapped)
 	if not l_ok then
 		three.debug.ERR("loadstring errored: "..l_err
@@ -204,6 +208,7 @@ local args = {...}
 local getThree = args[1]
 local getProject = args[2]
 local this = {}
+local com = {}
 ]]
 three._load._append = [[
 -- FALLBACK APPENDER --
@@ -255,6 +260,7 @@ three._load.wrap = function(fileName)
 	end
 	prepend = prepend.."\nthis.__NAME = \""..fileName.."\""
 	local instr = three._load.getfile(fileName)
+	instr = three._load.runhooks(instr)
 	if not instr then
 		return
 	end
@@ -277,6 +283,14 @@ three._load.addevents = function(mod)
 		three.debug.WARN("Attempted to add event management\
 			to a nil module")
 		return
+	end
+	if mod.using_hook then
+      if not three.event.ok_hook_callbacks then
+         three.event.ok_hook_callbacks = {}
+      end
+		three.event.ok_hook_callbacks[
+			#three.event.on_hook_callbacks + 1]
+			= mod.using_hook
 	end
 	if mod.on_done then
 		three.event.on_done_callbacks[
@@ -302,13 +316,51 @@ three.exit = function()
 	three.debug.FATAL("Exiting Three")
 end
 
+--[[ The three hooks to run [new system]
+		this will largely replace the preprocessor stuff
+		as it does the same thing but extendable]]
+three._load.hooks = {
+	--[[ the template that has to be adhered to, does
+			not need to be ran last, does nothing.
+			Note that the ext_modules may further
+			populate this table with hooks to run on
+			new user program files]]
+	function(str)
+		return str
+	end
+}
+
+--[[ For running all the hooks [new system] on a read
+		file to be loaded by three, hooks are stored in
+		three._load.hooks.]]
+three._load.runhooks = function(str)
+	for k, hook in pairs(three._load.hooks) do
+		str = hook(str) -- quite volatile
+	end
+	return str
+end
+
 --[[ Three does basic event management, these are
 		events that can be hooked on to for performing
-		on module load an on module done initialization.]]
+		on module load and on module done initialization.
+		Also triggers the #using hook]]
 three.event = {
 	on_done_callbacks = {},
-	on_load_callbacks = {}
+	on_load_callbacks = {},
+	on_hook_callbacks = {}
 }
+
+--[[ actual entry point for the #using hooks for loading
+		other modules ]]
+three.event.usinghook = function()
+	for k, v in pairs(three.event.on_hook_callbacks) do
+		local ok, err = pcall(v)
+		if not ok then
+			three.debug.ERR(
+				"Error during module using hook: "..err)
+		end
+	end
+end
 
 --[[ This function is called once all modules registered
 		have been loaded, and will call the callbacks.]]
@@ -425,6 +477,7 @@ three.project.walkproj = function(cDir, mName, opts)
 			if fs.isDir(dir) then
 				three.project.walkproj(dir, iName, opts)
 			elseif fs.exists(dir) then
+				three.debug.WARN("using: "..dir)
 				three.ld(iName, dir)
 				three.project.modulecount = 
 					three.project.modulecount and
@@ -467,11 +520,13 @@ three.project.loaddir = function(dir, opts)
 	-- attempt to load extra three files
 	if three.project.threedir then
 		local d = fs.getDir(three.project.threedir)
+		d = fs.combine(d, "three_modules")
 		three.debug.FINE("Project directory: "..tostring(d))
 		three.project.walkproj(d, "", {
 			whitelist = three.project._three_whitelist,
 			blacklist = three.project._three_blacklist
 		})
+		three.event.modulesloaded()
 	end
 
 	-- we assume we have a valid project file, and
@@ -479,6 +534,7 @@ three.project.loaddir = function(dir, opts)
 	three.project.walkproj(dir, "", opts)
 	--three.project.printmods()
 	three.project.populatecom()
+	three.event.usinghook()
 	three.event.modulesloaded()
 	three.event.modulesdone()
 	if three.project.main then
@@ -488,11 +544,13 @@ three.project.loaddir = function(dir, opts)
 				return --ends execution
 			end
 			if not ok and not three.exiting then
+            print("Three table in three: "..tostring(three))
 				three.debug.INFO("The execution reached the"
 				.." end of the error handling chain into three."
 				.." This usually means the project did not "
 				.."handle an error raised in the main() function",
 				err)
+            return
 			end
 		end
 	else
@@ -619,6 +677,12 @@ end
 three.preprocessor.getModulePath = function(str)
 	local mStr = "%-%-MOD:"
 	local mLen = #mStr-2
+
+
+
+	if not str or type(str) ~= "string" then
+		return
+	end
 	local off = str:find(mStr)
 	if not off then
 		return
